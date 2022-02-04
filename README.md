@@ -1,2 +1,2 @@
-# wordle-clone
-Wordle clone project for CS 150
+# Wordle clone
+Own implementation of Wordle. Made using the Toga GUI Toolkit.
