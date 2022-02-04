@@ -107,14 +107,35 @@ class WordBoardComponent:
             self.main_box.add(word_box)
 
     def update_board(self, row, guess, correct_word, invalid_letters):
-        for i, char in enumerate(self.main_box.children[row].children):
-            char.label = guess[i].upper()
+        # For each unique letter in the correct_word, this maps its number
+        # of occurrences in the word, e.g. hello => {h: 1, e: 1, l: 2, o: 1}
+        histogram = dict()
+        for char in correct_word:
+            try:
+                histogram[char] += 1
+            except KeyError:
+                histogram[char] = 1
 
-            if guess[i] == correct_word[i]:
+        # Color the correctly-guessed letters first...
+        for i, char in enumerate(self.main_box.children[row].children):
+            guess_char = guess[i]
+            
+            char.label = guess_char.upper()
+
+            if guess_char == correct_word[i]:
                 char.style.background_color = 'green'
-            elif guess[i] in correct_word:
+                histogram[guess_char] -= 1
+
+        # ...then color the others to prevent coloring conflict.
+        for i, char in enumerate(self.main_box.children[row].children):
+            guess_char = guess[i]
+            
+            char.label = guess_char.upper()
+
+            if guess_char in correct_word and histogram[guess_char] > 0:
                 char.style.background_color = 'yellow'
-            else:
+                histogram[guess_char] -= 1
+            elif guess_char != correct_word[i]:
                 char.style.background_color = 'gray'
                 invalid_letters.add(char.label)
 
