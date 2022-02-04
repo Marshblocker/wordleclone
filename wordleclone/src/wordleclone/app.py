@@ -1,0 +1,253 @@
+"""
+My first application
+"""
+import random
+import toga
+from toga.style import Pack
+from toga.style.pack import COLUMN, ROW
+
+MAX_CHARS = 5
+MAX_GUESS = 6
+
+class GuessComponent:
+    def __init__(self, update_board_handler):
+        self.main_box = toga.Box(
+            style=Pack(direction='column')
+        )
+
+        guess_input_box = toga.Box(
+            style=Pack(direction='row')
+        )
+
+        guess_label = toga.Label(
+            'Guess:',
+            style=Pack(
+                padding=5,
+                padding_top=7.5,
+                font_size=12,
+            )
+        )
+        self.guess_input = toga.TextInput(
+            style=Pack(
+                flex=1,
+                font_size=12,
+                padding_right=5,
+                padding_top=5,
+            )
+        )
+
+        guess_input_box.add(guess_label)
+        guess_input_box.add(self.guess_input)
+
+        self.guess_button = toga.Button(
+            'Guess',
+            style=Pack(
+                flex=1,
+                font_size=12,
+                padding=5,
+            ),
+            on_press=update_board_handler
+        )
+
+        alphabet: str = ' '.join([chr(i) for i in range(ord('A'), ord('Z')+1)])
+        self.alphabet_text = toga.Label(
+            alphabet,
+            style=Pack(
+                flex=1,
+                font_size=12,
+                padding_left=5,
+                padding_right=5,
+                padding_top=5,
+                padding_bottom=15,
+                text_align='center',
+            )
+        )        
+
+        self.main_box.add(guess_input_box)
+        self.main_box.add(self.guess_button)
+        self.main_box.add(self.alphabet_text)
+
+    def update_alphabet(self, invalid_letters):
+        alphabet = ' '.join([chr(i) if i not in invalid_letters else ' ' 
+                             for i in range(ord('A'), ord('Z')+1)
+                            ])
+        self.alphabet_text.text = alphabet
+
+
+class WordBoardComponent:
+    def __init__(self):
+        self.main_box = toga.Box(
+            style=Pack(direction='column')
+        )
+
+        for _ in range(MAX_GUESS):
+            word_box = toga.Box(
+                style=Pack(
+                    direction='row',
+                    alignment='center',
+                    padding=(5, 400),
+                )
+            )
+            for _ in range(MAX_CHARS):
+                character = toga.Button(
+                    '',
+                    style=Pack(
+                        flex=1,
+                        alignment='center',
+                        height=80,
+                        padding_left=5,
+                        padding_right=5,
+                        font_size=12,
+                        font_weight='bold'
+                    )
+                )
+
+                word_box.add(character)
+
+            self.main_box.add(word_box)
+
+    def update_board(self, row, guess, correct_word, invalid_letters):
+        for i, char in enumerate(self.main_box.children[row].children):
+            char.label = guess[i].upper()
+
+            if guess[i] == correct_word[i]:
+                char.style.background_color = 'green'
+            elif guess[i] in correct_word:
+                char.style.background_color = 'yellow'
+            else:
+                char.style.background_color = 'gray'
+                invalid_letters.add(char.label)
+
+    def reset(self):
+        for word_box in self.main_box.children:
+            for char in word_box.children:
+                char.label = ''
+                char.style.background_color = 'transparent'
+
+class RestartComponent:
+    def __init__(self, restart_game_handler):
+        self.main_box = toga.Box(
+            style=Pack(direction='column')
+        )
+
+        restart_button = toga.Button(
+            'Restart',
+            style=Pack(
+                flex=1,
+                font_size=12,
+                padding=5,
+            ),
+            on_press=restart_game_handler
+        )
+
+        self.main_box.add(restart_button)
+
+class WordleClone(toga.App):
+
+    def startup(self):
+        self.correct_words_list = []
+        self.allowed_words_list = []
+        self.get_words_from_file()
+
+        self.correct_word = random.choice(self.correct_words_list)
+        print(self.correct_word)
+
+        self.invalid_letters = set()
+
+        self.game_over = False
+        self.guess_count = 0
+
+        self.main_box = toga.Box(
+            style=Pack(direction='column',)
+        )
+
+        self.guess_component = GuessComponent(self.guess_the_word)
+        self.wordboard_component = WordBoardComponent()
+        self.restart_component = RestartComponent(self.restart_game)
+
+        self.main_box.add(self.guess_component.main_box)
+        self.main_box.add(self.wordboard_component.main_box)
+        self.main_box.add(self.restart_component.main_box)
+
+        self.main_window = toga.MainWindow(title=self.formal_name)
+        self.main_window.content = self.main_box
+        self.main_window.show()
+
+    def get_words_from_file(self):
+
+        with open(f'{self.paths.app}/words.txt') as words_file:
+            self.correct_words_list = words_file.read().split('\n')
+
+        with open(f'{self.paths.app}/allowed_guesses.txt') as allowed_guesses_file:
+            self.allowed_words_list = allowed_guesses_file.read().split('\n')
+
+    def guess_the_word(self, handler):
+        guessed_word = self.guess_component.guess_input.value
+
+        if len(guessed_word) != 5:
+            self.main_window.error_dialog(
+                'Error',
+                'The guessed word can only be a 5-letter word.'
+            )
+            self.guess_component.guess_input.clear()
+            return 
+
+        if not guessed_word.isalpha():
+            self.main_window.error_dialog(
+                'Error',
+                'The guessed word can only have alphabetical characters.'
+            )
+            self.guess_component.guess_input.clear()
+            return
+
+        guessed_word = guessed_word.lower()
+
+        if guessed_word not in self.allowed_words_list:
+            self.main_window.error_dialog(
+                'Error',
+                'The guessed word is not in the list of allowed guesses.'
+            )
+            self.guess_component.guess_input.clear()
+            return
+
+        self.wordboard_component.update_board(
+            self.guess_count, 
+            guessed_word,
+            self.correct_word,
+            self.invalid_letters
+        )
+        self.guess_component.update_alphabet(self.invalid_letters)
+        self.guess_count += 1
+
+        if self.guess_count == 6:
+            self.game_over = True
+            self.guess_component.guess_button.enabled = False
+            self.guess_component.guess_button.label = 'Game Over'
+
+        if guessed_word == self.correct_word:
+            self.main_window.info_dialog(
+                'Victory',
+                'Hooray! You guessed it correctly!'
+            )
+            self.game_over = True
+            self.guess_component.guess_button.enabled = False
+            self.guess_component.guess_button.label = 'Game Over'
+        else:
+            if self.game_over:
+                self.main_window.error_dialog(
+                    'Game Over',
+                    'Six incorrect guesses have been made. Game Over.\n\
+                     The correct word is {}.'.format(self.correct_word)
+                )
+
+    def restart_game(self, handler):
+        self.wordboard_component.reset()
+        self.guess_component.guess_input.clear()
+        self.correct_word = random.choice(self.correct_words_list)
+        self.guess_count = 0
+        self.game_over = False
+        self.guess_component.guess_button.enabled = True
+        self.guess_component.guess_button.label = 'Guess'
+
+def main():
+    return WordleClone()
