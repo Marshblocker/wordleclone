@@ -1,7 +1,5 @@
-"""
-My first application
-"""
 import random
+from enum import Enum
 import toga
 from toga.style import Pack
 from toga.style.pack import COLUMN, ROW
@@ -67,13 +65,6 @@ class GuessComponent:
         self.main_box.add(self.guess_button)
         self.main_box.add(self.alphabet_text)
 
-    def update_alphabet(self, invalid_letters):
-        alphabet = ' '.join([chr(i) if i not in invalid_letters else ' ' 
-                             for i in range(ord('A'), ord('Z')+1)
-                            ])
-        self.alphabet_text.text = alphabet
-
-
 class WordBoardComponent:
     def __init__(self):
         self.main_box = toga.Box(
@@ -106,7 +97,8 @@ class WordBoardComponent:
 
             self.main_box.add(word_box)
 
-    def update_board(self, row, guess, correct_word, invalid_letters):
+    def update_board(self, row, guess, correct_word):
+        
         # For each unique letter in the correct_word, this maps its number
         # of occurrences in the word, e.g. hello => {h: 1, e: 1, l: 2, o: 1}
         histogram = dict()
@@ -137,7 +129,6 @@ class WordBoardComponent:
                 histogram[guess_char] -= 1
             elif guess_char != correct_word[i]:
                 char.style.background_color = 'gray'
-                invalid_letters.add(char.label)
 
     def reset(self):
         for word_box in self.main_box.children:
@@ -163,6 +154,26 @@ class RestartComponent:
 
         self.main_box.add(restart_button)
 
+class ErrorEnum(Enum):
+    InvalidGuessLength = 'The guessed word can only be a 5-letter word.'
+    GuessNotAlpha      = 'The guessed word can only have alphabetical characters.'
+    NotAllowedGuess    = 'The guessed word is not in the list of allowed guesses.'
+
+class Error:
+    def check_for_error(self, 
+                        guessed_word, 
+                        allowed_words_list
+                    ):
+        err = ''
+        if len(guessed_word) != 5:
+            err = ErrorEnum.InvalidGuessLength.value
+        elif not guessed_word.isalpha():
+            err = ErrorEnum.GuessNotAlpha.value
+        elif guessed_word.lower() not in allowed_words_list:
+            err = ErrorEnum.NotAllowedGuess.value
+
+        return err
+
 class WordleClone(toga.App):
 
     def startup(self):
@@ -171,9 +182,6 @@ class WordleClone(toga.App):
         self.get_words_from_file()
 
         self.correct_word = random.choice(self.correct_words_list)
-        print(self.correct_word)
-
-        self.invalid_letters = set()
 
         self.game_over = False
         self.guess_count = 0
@@ -205,39 +213,26 @@ class WordleClone(toga.App):
     def guess_the_word(self, handler):
         guessed_word = self.guess_component.guess_input.value
 
-        if len(guessed_word) != 5:
+        error_handler = Error()
+        err = error_handler.check_for_error(
+                guessed_word, 
+                self.allowed_words_list
+        )
+        if err:
             self.main_window.error_dialog(
                 'Error',
-                'The guessed word can only be a 5-letter word.'
-            )
-            self.guess_component.guess_input.clear()
-            return 
-
-        if not guessed_word.isalpha():
-            self.main_window.error_dialog(
-                'Error',
-                'The guessed word can only have alphabetical characters.'
+                err,
             )
             self.guess_component.guess_input.clear()
             return
 
         guessed_word = guessed_word.lower()
 
-        if guessed_word not in self.allowed_words_list:
-            self.main_window.error_dialog(
-                'Error',
-                'The guessed word is not in the list of allowed guesses.'
-            )
-            self.guess_component.guess_input.clear()
-            return
-
         self.wordboard_component.update_board(
             self.guess_count, 
             guessed_word,
             self.correct_word,
-            self.invalid_letters
         )
-        self.guess_component.update_alphabet(self.invalid_letters)
         self.guess_count += 1
 
         if self.guess_count == 6:
