@@ -1,5 +1,6 @@
 import random
 from enum import Enum
+
 import toga
 from toga.style import Pack
 from toga.style.pack import COLUMN, ROW
@@ -97,11 +98,15 @@ class WordBoardComponent:
 
             self.main_box.add(word_box)
 
-    def update_board(self, row, guess, correct_word):
+    def update_board(self, 
+                     row: int, 
+                     guess: str, 
+                     correct_word: str
+                ) -> None:
         
         # For each unique letter in the correct_word, this maps its number
         # of occurrences in the word, e.g. hello => {h: 1, e: 1, l: 2, o: 1}
-        histogram = dict()
+        histogram: dict[str, int] = dict()
         for char in correct_word:
             try:
                 histogram[char] += 1
@@ -130,7 +135,7 @@ class WordBoardComponent:
             elif guess_char != correct_word[i]:
                 char.style.background_color = 'gray'
 
-    def reset(self):
+    def reset(self) -> None:
         for word_box in self.main_box.children:
             for char in word_box.children:
                 char.label = ''
@@ -154,6 +159,19 @@ class RestartComponent:
 
         self.main_box.add(restart_button)
 
+class FileReader:
+    def get_words_from_file(self, 
+                            app_path: str,
+                        ) -> tuple[list[str], list[str]]:
+
+        with open(f'{app_path}/words.txt') as words_file:
+            correct_words_list = words_file.read().split('\n')
+
+        with open(f'{app_path}/allowed_guesses.txt') as allowed_guesses_file:
+            allowed_words_list = allowed_guesses_file.read().split('\n')
+
+        return (correct_words_list, allowed_words_list)
+
 class Error:
     class ErrorEnum(Enum):
         InvalidGuessLength = 'The guessed word can only be a 5-letter word.'
@@ -163,7 +181,7 @@ class Error:
     def check_for_error(self, 
                         guessed_word, 
                         allowed_words_list
-                    ):
+                    ) -> str:
         err = ''
         if len(guessed_word) != 5:
             err = self.ErrorEnum.InvalidGuessLength.value
@@ -177,17 +195,20 @@ class Error:
 class WordleClone(toga.App):
 
     def startup(self):
-        self.correct_words_list = []
-        self.allowed_words_list = []
-        self.get_words_from_file()
+        self.correct_words_list: list[str] = []
+        self.allowed_words_list: list[str] = []
+        
+        file_reader = FileReader()
+        (self.correct_words_list, self.allowed_words_list) = \
+                                file_reader.get_words_from_file(self.paths.app)
 
-        self.correct_word = random.choice(self.correct_words_list)
+        self.correct_word: str = random.choice(self.correct_words_list)
 
         self.game_over = False
         self.guess_count = 0
 
         self.main_box = toga.Box(
-            style=Pack(direction='column',)
+            style=Pack(direction='column')
         )
 
         self.guess_component = GuessComponent(self.guess_the_word)
@@ -202,15 +223,7 @@ class WordleClone(toga.App):
         self.main_window.content = self.main_box
         self.main_window.show()
 
-    def get_words_from_file(self):
-
-        with open(f'{self.paths.app}/words.txt') as words_file:
-            self.correct_words_list = words_file.read().split('\n')
-
-        with open(f'{self.paths.app}/allowed_guesses.txt') as allowed_guesses_file:
-            self.allowed_words_list = allowed_guesses_file.read().split('\n')
-
-    def guess_the_word(self, handler):
+    def guess_the_word(self, handler) -> None:
         guessed_word = self.guess_component.guess_input.value
 
         error_handler = Error()
@@ -256,7 +269,7 @@ class WordleClone(toga.App):
                      The correct word is {}.'.format(self.correct_word)
                 )
 
-    def restart_game(self, handler):
+    def restart_game(self, handler) -> None:
         self.wordboard_component.reset()
         self.guess_component.guess_input.clear()
         self.correct_word = random.choice(self.correct_words_list)
