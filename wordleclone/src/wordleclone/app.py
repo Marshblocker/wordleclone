@@ -203,6 +203,7 @@ class WordleClone(toga.App):
                                 file_reader.get_words_from_file(self.paths.app)
 
         self.correct_word: str = random.choice(self.correct_words_list)
+        print(self.correct_word)
 
         self.game_over = False
         self.guess_count = 0
@@ -258,9 +259,10 @@ class WordleClone(toga.App):
                 'Victory',
                 'Hooray! You guessed it correctly!'
             )
-            self.game_over = True
-            self.guess_component.guess_button.enabled = False
-            self.guess_component.guess_button.label = 'Game Over'
+            if self.guess_count != 6:
+                self.game_over = True
+                self.guess_component.guess_button.enabled = False
+                self.guess_component.guess_button.label = 'Game Over'
         else:
             if self.game_over:
                 self.main_window.error_dialog(
