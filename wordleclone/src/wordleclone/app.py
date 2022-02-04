@@ -154,23 +154,23 @@ class RestartComponent:
 
         self.main_box.add(restart_button)
 
-class ErrorEnum(Enum):
-    InvalidGuessLength = 'The guessed word can only be a 5-letter word.'
-    GuessNotAlpha      = 'The guessed word can only have alphabetical characters.'
-    NotAllowedGuess    = 'The guessed word is not in the list of allowed guesses.'
-
 class Error:
+    class ErrorEnum(Enum):
+        InvalidGuessLength = 'The guessed word can only be a 5-letter word.'
+        GuessNotAlpha      = 'The guessed word can only have alphabetical characters.'
+        NotAllowedGuess    = 'The guessed word is not in the list of allowed guesses.'
+
     def check_for_error(self, 
                         guessed_word, 
                         allowed_words_list
                     ):
         err = ''
         if len(guessed_word) != 5:
-            err = ErrorEnum.InvalidGuessLength.value
+            err = self.ErrorEnum.InvalidGuessLength.value
         elif not guessed_word.isalpha():
-            err = ErrorEnum.GuessNotAlpha.value
+            err = self.ErrorEnum.GuessNotAlpha.value
         elif guessed_word.lower() not in allowed_words_list:
-            err = ErrorEnum.NotAllowedGuess.value
+            err = self.ErrorEnum.NotAllowedGuess.value
 
         return err
 
