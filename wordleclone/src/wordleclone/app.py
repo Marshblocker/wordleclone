@@ -203,7 +203,6 @@ class WordleClone(toga.App):
                                 file_reader.get_words_from_file(self.paths.app)
 
         self.correct_word: str = random.choice(self.correct_words_list)
-        print(self.correct_word)
 
         self.game_over = False
         self.guess_count = 0
